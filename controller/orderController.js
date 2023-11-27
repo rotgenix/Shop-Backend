@@ -85,10 +85,13 @@ exports.updateOrder = catchAsyncErrors(async (req, res, next) => {
   if (order.orderStatus === "Delivered")
     return next(new ErrorHander("Order is already delivered", 404));
 
-  order.orderItems.forEach(async (order) => {
-    await updateStock(order.product, order.quantity);
-  });
+  // for decreasing stock of delivered items.
 
+  if (req.body.status === "Shipped" && order.orderStatus != "Shipped") {
+    order.orderItems.forEach(async (order) => {
+      await updateStock(order.product.valueOf(), order.quantity);
+    });
+  }
   order.orderStatus = req.body.status;
 
   if (req.body.status === "Delivered") {
@@ -103,6 +106,14 @@ exports.updateOrder = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
+// reducing the stock quantity of a delivered product.
+const updateStock = async (id, quantity) => {
+  const product = await Product.findById(id);
+  product.stock -= quantity;
+
+  await product.save({ validateBeforeSave: false });
+};
+
 // delete order -- Admin
 exports.deleteOrder = catchAsyncErrors(async (req, res, next) => {
   const order = await Order.findById(req.params.id);
@@ -116,11 +127,3 @@ exports.deleteOrder = catchAsyncErrors(async (req, res, next) => {
     message: `order with given id - ${req.params.id} is deleted successfully`,
   });
 });
-
-// reducing the stock quantity of a delivered product.
-const updateStock = async (id, quantity) => {
-  const product = await Product.findById(id);
-  product.stock -= quantity;
-
-  await product.save({ validateBeforeSave: false });
-};

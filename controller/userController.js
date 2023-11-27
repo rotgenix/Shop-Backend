@@ -4,16 +4,22 @@ const User = require("../models/userModel");
 const sendToken = require("../utils/jwtToken");
 const sendEmail = require("../utils/sendEmail");
 const crypto = require("crypto");
+const cloudinary = require("cloudinary");
 
 // Register a user
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
+  const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
+    folder: "avatars",
+    width: 150,
+    crop: "scale",
+  });
   const { name, email, password } = req.body;
 
   const user = await User.create({
     name,
     email,
     password,
-    avatar: { public_id: "123455432", url: "343443434" },
+    avatar: { public_id: myCloud.public_id, url: myCloud.secure_url },
   });
 
   sendToken(user, 201, res);
@@ -65,7 +71,7 @@ exports.forgotpassword = catchAsyncErrors(async (req, res, next) => {
 
   const resetPasswordUrl = `${req.protocol}://${req.get(
     "host"
-  )}/api/v1/password/reset/${resetToken}`;
+  )}/password/recovery/${resetToken}`;
 
   const message = `your password reset token is :- \n ${resetPasswordUrl} \n\n If you have not requested this email then ignore it
   `;
@@ -73,7 +79,7 @@ exports.forgotpassword = catchAsyncErrors(async (req, res, next) => {
   try {
     await sendEmail({
       email: user.email,
-      subject: "ecommerce password recovery",
+      subject: "ShopKaro Password Recovery",
       message: message,
     });
 
@@ -122,7 +128,7 @@ exports.resetPassword = catchAsyncErrors(async (req, res, next) => {
   user.resetPasswordExpire = undefined;
   user.resetPasswordToken = undefined;
   await user.save();
-  sendToken(user, 200, res);
+  // sendToken(user, 200, res);
 
   res.status(200).json({
     success: true,
@@ -157,6 +163,8 @@ exports.updateUserPassword = catchAsyncErrors(async (req, res, next) => {
   await user.save();
 
   sendToken(user, 200, res);
+
+  res.status;
 });
 
 // update user profile
@@ -165,6 +173,24 @@ exports.updateProfile = catchAsyncErrors(async (req, res, next) => {
     name: req.body.name,
     email: req.body.email,
   };
+
+  if (req.body.avatar) {
+    const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
+      folder: "avatars",
+      width: 150,
+      crop: "scale",
+    });
+
+    newUserData.avatar = {
+      public_id: myCloud.public_id,
+      url: myCloud.secure_url,
+    };
+
+    const user = await User.findById(req.user.id);
+    const imageId = user.avatar.public_id;
+
+    await cloudinary.v2.uploader.destroy(imageId);
+  }
 
   const user = await User.findByIdAndUpdate(req.user.id, newUserData, {
     new: true,
@@ -175,6 +201,7 @@ exports.updateProfile = catchAsyncErrors(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "profile updated successfully",
+    isUpdated: true,
   });
 });
 
@@ -225,9 +252,11 @@ exports.deleteUser = catchAsyncErrors(async (req, res, next) => {
   if (!user) return next(new ErrorHander("User not exit with given id", 404));
   await user.deleteOne();
 
+  const imageId = user.avatar.public_id;
+  await cloudinary.v2.uploader.destroy(imageId);
+
   res.status(200).json({
     success: true,
     message: "User deleted successfully",
   });
 });
-

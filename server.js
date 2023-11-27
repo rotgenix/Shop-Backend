@@ -1,5 +1,5 @@
 const app = require("./app.js");
-const dotenv = require("dotenv");
+const cloudinary = require("cloudinary");
 const connectDb = require("./config/database.js");
 
 // handle uncaught exception
@@ -10,10 +10,18 @@ process.on("uncaughtException", (err) => {
 });
 
 // config
-dotenv.config({ path: "Backend/config/config.env" });
+if (process.env.NODE_ENV !== "PRODUCTION") {
+  require("dotenv").config({ path: "Backend/config/config.env" });
+}
 
 // connecting data base
 connectDb();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // creating server
 const Port = process.env.PORT;
