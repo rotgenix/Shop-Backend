@@ -1,6 +1,8 @@
 const app = require("./app.js");
 const cloudinary = require("cloudinary");
 const connectDb = require("./config/database.js");
+require("dotenv").config({ path: "./config/config.env" });
+app.use(cors({}));
 
 // handle uncaught exception
 process.on("uncaughtException", (err) => {
@@ -10,6 +12,7 @@ process.on("uncaughtException", (err) => {
 });
 
 // config
+// console.log(process.env.NODE_ENV)
 if (process.env.NODE_ENV !== "PRODUCTION") {
   require("dotenv").config({ path: "Backend/config/config.env" });
 }
